@@ -16,6 +16,7 @@ class InterpreterTest {
                 expression = Expr.Literal(value = 45.67)
             )
         )
-        Interpreter().interpret(expression)
+        val statement = Stmt.Print(expression)
+        Interpreter().interpret(listOf(statement))
     }
 }

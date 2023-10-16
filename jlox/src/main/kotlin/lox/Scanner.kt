@@ -1,6 +1,44 @@
 package lox
 
-import lox.TokenType.*
+import lox.TokenType.AND
+import lox.TokenType.BANG
+import lox.TokenType.BANG_EQUAL
+import lox.TokenType.CLASS
+import lox.TokenType.COMMA
+import lox.TokenType.DOT
+import lox.TokenType.ELSE
+import lox.TokenType.EOF
+import lox.TokenType.EQUAL
+import lox.TokenType.EQUAL_EQUAL
+import lox.TokenType.FALSE
+import lox.TokenType.FOR
+import lox.TokenType.FUN
+import lox.TokenType.GREATER
+import lox.TokenType.GREATER_EQUAL
+import lox.TokenType.IDENTIFIER
+import lox.TokenType.IF
+import lox.TokenType.LEFT_BRACE
+import lox.TokenType.LEFT_PAREN
+import lox.TokenType.LESS
+import lox.TokenType.LESS_EQUAL
+import lox.TokenType.MINUS
+import lox.TokenType.NIL
+import lox.TokenType.NUMBER
+import lox.TokenType.OR
+import lox.TokenType.PLUS
+import lox.TokenType.PRINT
+import lox.TokenType.RETURN
+import lox.TokenType.RIGHT_BRACE
+import lox.TokenType.RIGHT_PAREN
+import lox.TokenType.SEMICOLON
+import lox.TokenType.SLASH
+import lox.TokenType.STAR
+import lox.TokenType.STRING
+import lox.TokenType.SUPER
+import lox.TokenType.THIS
+import lox.TokenType.TRUE
+import lox.TokenType.VAR
+import lox.TokenType.WHILE
 
 class Scanner(private val source: String) {
     private val tokens = mutableListOf<Token>()
@@ -20,7 +58,7 @@ class Scanner(private val source: String) {
     private fun isAtEnd(): Boolean = current >= source.length
 
     private fun scanToken() {
-        when (advance()) {
+        when (val c = advance()) {
             '(' -> addToken(LEFT_PAREN)
             ')' -> addToken(RIGHT_PAREN)
             '{' -> addToken(LEFT_BRACE)
@@ -40,8 +78,8 @@ class Scanner(private val source: String) {
             ' ', '\r', '\t' -> {}
             '\n' -> line++
             else -> when {
-                isDigit(advance()) -> number()
-                isAlpha(advance()) -> identifier()
+                isDigit(c) -> number()
+                isAlpha(c) -> identifier()
                 else -> Lox.error(line, "Unexpected character.")
             }
         }

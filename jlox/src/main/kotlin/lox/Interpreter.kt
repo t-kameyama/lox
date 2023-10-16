@@ -14,19 +14,35 @@ import lox.TokenType.STAR
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-class Interpreter : Expr.Visitor<Any?> {
+class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
+    private var environment = Environment()
 
-    fun interpret(expr: Expr) {
+    fun interpret(statements: List<Stmt>) {
         try {
-            val value = evaluate(expr)
-            println(stringify(value))
+            for (statement in statements) {
+                execute(statement)
+            }
         } catch (e: RuntimeError) {
             Lox.runtimeError(e)
         }
     }
 
+    private fun execute(stmt: Stmt) {
+        stmt.accept(this)
+    }
+
     private fun evaluate(expr: Expr): Any? {
         return expr.accept(this)
+    }
+
+    private fun evaluateBlock(statements: List<Stmt>, environment: Environment) {
+        val previous = this.environment
+        try {
+            this.environment = environment
+            statements.forEach { execute(it) }
+        } finally {
+            this.environment = previous
+        }
     }
 
     private fun stringify(value: Any?): String {
@@ -38,6 +54,29 @@ class Interpreter : Expr.Visitor<Any?> {
         }
 
         return text
+    }
+
+    override fun visitVarStmt(stmt: Stmt.Var) {
+        environment.define(stmt.name, stmt.initializer?.let { evaluate(it) })
+    }
+
+    override fun visitExpressionStmt(stmt: Stmt.Expression) {
+        evaluate(stmt.expr)
+    }
+
+    override fun visitPrintStmt(stmt: Stmt.Print) {
+        val value = evaluate(stmt.expr)
+        println(stringify(value))
+    }
+
+    override fun visitBlockStmt(block: Stmt.Block) {
+        evaluateBlock(block.statements, Environment(environment))
+    }
+
+    override fun visitAssignExpr(expr: Expr.Assign): Any? {
+        val value = evaluate(expr.value)
+        environment.assign(expr.name, value)
+        return value
     }
 
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {
@@ -125,6 +164,10 @@ class Interpreter : Expr.Visitor<Any?> {
             BANG -> !isTruthy(right)
             else -> null
         }
+    }
+
+    override fun visitVariableExpr(expr: Expr.Variable): Any? {
+        return environment.get(expr.name)
     }
 
     private fun isTruthy(value: Any?): Boolean {

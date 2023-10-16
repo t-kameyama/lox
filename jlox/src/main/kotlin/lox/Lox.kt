@@ -47,15 +47,14 @@ object Lox {
         }
     }
 
-    private fun run(source: String) {
+    fun run(source: String) {
         val scanner = Scanner(source)
         val tokens = scanner.scanTokens()
         val parser = Parser(tokens)
-        val expression = parser.parse()
+        val statements = parser.parse()
         if (hadError) return
 
-        checkNotNull(expression)
-        interpreter.interpret(expression)
+        interpreter.interpret(statements)
     }
 
     fun error(line: Int, message: String) {
