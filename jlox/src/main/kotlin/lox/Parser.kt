@@ -1,8 +1,10 @@
 package lox
 
+import lox.TokenType.AND
 import lox.TokenType.BANG
 import lox.TokenType.BANG_EQUAL
 import lox.TokenType.CLASS
+import lox.TokenType.ELSE
 import lox.TokenType.EOF
 import lox.TokenType.EQUAL
 import lox.TokenType.EQUAL_EQUAL
@@ -20,6 +22,7 @@ import lox.TokenType.LESS_EQUAL
 import lox.TokenType.MINUS
 import lox.TokenType.NIL
 import lox.TokenType.NUMBER
+import lox.TokenType.OR
 import lox.TokenType.PLUS
 import lox.TokenType.PRINT
 import lox.TokenType.RETURN
@@ -66,8 +69,11 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun statement(): Stmt {
-        // exprStmt | printStmt | block ;
+        // exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+        if (match(FOR)) return forStmt()
+        if (match(IF)) return ifStmt()
         if (match(PRINT)) return printStmt()
+        if (match(WHILE)) return whileStmt()
         if (match(LEFT_BRACE)) return blockStmt()
         return exprStmt()
     }
@@ -77,6 +83,62 @@ class Parser(private val tokens: List<Token>) {
         val expr = expression()
         consume(SEMICOLON, "Expect ';' after expression.")
         return Stmt.Expression(expr)
+    }
+
+    private fun forStmt(): Stmt {
+        // "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+        consume(LEFT_PAREN, "Expect '(' after 'for'.")
+
+        val initializer = when {
+            match(SEMICOLON) -> null
+            match(VAR) -> varDecl()
+            else -> exprStmt()
+        }
+
+        val condition = if (check(SEMICOLON)) Expr.Literal(true) else expression()
+        consume(SEMICOLON, "Expect ';' after loop condition.")
+
+        val increment = if (check(RIGHT_PAREN)) null else Stmt.Expression(expression())
+        consume(RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        var body = if (increment != null) {
+            Stmt.Block(listOf(statement(), increment))
+        } else {
+            statement()
+        }
+
+        body = Stmt.While(condition, body)
+
+        body = if (initializer != null) {
+            Stmt.Block(listOf(initializer, body))
+        } else {
+            body
+        }
+
+        return body
+    }
+
+    private fun whileStmt(): Stmt.While {
+        // "while" "(" expression ")" statement ;
+        consume(LEFT_PAREN, "Expect '(' after 'while'.")
+        val condition = expression()
+        consume(RIGHT_PAREN, "Expect ')' after while condition.")
+
+        val body = statement()
+
+        return Stmt.While(condition, body)
+    }
+
+    private fun ifStmt(): Stmt.If {
+        // "if" "(" expression ")" statement ( "else" statement )? ;
+        consume(LEFT_PAREN, "Expect '(' after 'if'.")
+        val condition = expression()
+        consume(RIGHT_PAREN, "Expect ')' after if condition.")
+
+        val thenBranch = statement()
+        val elseBranch = if (match(ELSE)) statement() else null
+
+        return Stmt.If(condition, thenBranch, elseBranch)
     }
 
     private fun printStmt(): Stmt.Print {
@@ -101,8 +163,8 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun assignment(): Expr {
-        // IDENTIFIER "=" assignment | equality ;
-        val expr = equality()
+        // IDENTIFIER "=" assignment | or ;
+        val expr = or()
         if (match(EQUAL)) {
             val equals = previous()
             val value = assignment()
@@ -110,6 +172,28 @@ class Parser(private val tokens: List<Token>) {
                 return Expr.Assign(expr.name, value)
             }
             error(equals, "Invalid assignment target.")
+        }
+        return expr
+    }
+
+    private fun or(): Expr {
+        // and ( "or" and )* ;
+        var expr = and()
+        while (match(OR)) {
+            val operator = previous()
+            val right = and()
+            expr = Expr.Logical(expr, operator, right)
+        }
+        return expr
+    }
+
+    private fun and(): Expr {
+        // equality ( "and" equality )* ;
+        var expr = equality()
+        while (match(AND)) {
+            val operator = previous()
+            val right = and()
+            expr = Expr.Logical(expr, operator, right)
         }
         return expr
     }

@@ -19,10 +19,20 @@ sealed interface Stmt {
         override fun <R> accept(visitor: Visitor<R>): R = visitor.visitVarStmt(this)
     }
 
+    data class If(val condition: Expr, val thenBranch: Stmt, val elseBranch: Stmt?) : Stmt {
+        override fun <R> accept(visitor: Visitor<R>): R = visitor.visitIfStmt(this)
+    }
+
+    data class While(val condition: Expr, val body: Stmt) : Stmt {
+        override fun <R> accept(visitor: Visitor<R>): R = visitor.visitWhileStmt(this)
+    }
+
     interface Visitor<R> {
         fun visitExpressionStmt(stmt: Expression): R
         fun visitPrintStmt(stmt: Print): R
         fun visitVarStmt(stmt: Var): R
         fun visitBlockStmt(block: Block): R
+        fun visitIfStmt(stmt: If): R
+        fun visitWhileStmt(stmt: While): R
     }
 }

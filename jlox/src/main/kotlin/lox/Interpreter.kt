@@ -1,5 +1,6 @@
 package lox
 
+import lox.TokenType.AND
 import lox.TokenType.BANG
 import lox.TokenType.BANG_EQUAL
 import lox.TokenType.EQUAL_EQUAL
@@ -8,6 +9,7 @@ import lox.TokenType.GREATER_EQUAL
 import lox.TokenType.LESS
 import lox.TokenType.LESS_EQUAL
 import lox.TokenType.MINUS
+import lox.TokenType.OR
 import lox.TokenType.PLUS
 import lox.TokenType.SLASH
 import lox.TokenType.STAR
@@ -71,6 +73,20 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
     override fun visitBlockStmt(block: Stmt.Block) {
         evaluateBlock(block.statements, Environment(environment))
+    }
+
+    override fun visitIfStmt(stmt: Stmt.If) {
+        if (isTruthy(evaluate(stmt.condition))) {
+            execute(stmt.thenBranch)
+        } else if (stmt.elseBranch != null) {
+            execute(stmt.elseBranch)
+        }
+    }
+
+    override fun visitWhileStmt(stmt: Stmt.While) {
+        while (isTruthy(evaluate(stmt.condition))) {
+            execute(stmt.body)
+        }
     }
 
     override fun visitAssignExpr(expr: Expr.Assign): Any? {
@@ -150,6 +166,17 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
     override fun visitLiteralExpr(expr: Expr.Literal): Any? {
         return expr.value
+    }
+
+    override fun visitLogicalExpr(expr: Expr.Logical): Any? {
+        val left = evaluate(expr.left)
+        val leftIsTruthy = isTruthy(left)
+        val type = expr.operator.type
+        return when {
+            type == OR && leftIsTruthy -> left
+            type == AND && !leftIsTruthy -> left
+            else -> evaluate(expr.right)
+        }
     }
 
     override fun visitUnaryExpr(expr: Expr.Unary): Any? {
