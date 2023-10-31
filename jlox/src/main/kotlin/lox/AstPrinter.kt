@@ -4,7 +4,11 @@ class AstPrinter : Expr.Visitor<String> {
     fun print(expr: Expr): String = expr.accept(this)
 
     override fun visitAssignExpr(expr: Expr.Assign): String {
-        TODO()
+        TODO("Not yet implemented")
+    }
+
+    override fun visitCallExpr(expr: Expr.Call): String {
+        TODO("Not yet implemented")
     }
 
     override fun visitBinaryExpr(expr: Expr.Binary): String {

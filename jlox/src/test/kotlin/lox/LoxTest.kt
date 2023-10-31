@@ -82,4 +82,49 @@ class LoxTest {
         """.trimIndent()
         Lox.run(source)
     }
+
+    @Test
+    fun function() {
+        val source = """
+            fun sayHi(first, last) {
+                print "Hi, " + first + " " + last + "!";
+            }
+            sayHi("Dear", "Reader");
+            print sayHi;
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun fib() {
+        val source = """
+            fun fib(n) {
+                if (n <= 1) return n;
+                return fib(n - 2) + fib(n - 1);
+            }
+            for (var i = 0; i < 20; i = i + 1) {
+                print fib(i);
+            }
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun closure() {
+        val source = """
+            fun makeCounter() {
+                var i = 0;
+                fun count() {
+                    i = i + 1;
+                    print i;
+                }
+                return count;
+            }
+            
+            var counter = makeCounter();
+            counter();
+            counter();
+        """.trimIndent()
+        Lox.run(source)
+    }
 }

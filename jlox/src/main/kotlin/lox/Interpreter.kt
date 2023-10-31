@@ -17,7 +17,22 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
-    private var environment = Environment()
+    val globals = Environment().apply {
+        define(
+            "clock",
+            object : LoxCallable {
+                override fun arity(): Int = 0
+
+                override fun call(interpreter: Interpreter, arguments: List<Any?>): Any {
+                    return System.currentTimeMillis().toDouble() / 1000.0
+                }
+
+                override fun toString(): String = "<native fn>"
+            },
+        )
+    }
+
+    private var environment = globals
 
     fun interpret(statements: List<Stmt>) {
         try {
@@ -29,15 +44,15 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         }
     }
 
-    private fun execute(stmt: Stmt) {
-        stmt.accept(this)
-    }
-
     private fun evaluate(expr: Expr): Any? {
         return expr.accept(this)
     }
 
-    private fun evaluateBlock(statements: List<Stmt>, environment: Environment) {
+    private fun execute(stmt: Stmt) {
+        stmt.accept(this)
+    }
+
+    fun executeBlock(statements: List<Stmt>, environment: Environment) {
         val previous = this.environment
         try {
             this.environment = environment
@@ -58,8 +73,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return text
     }
 
+    override fun visitFunctionStmt(stmt: Stmt.Function) {
+        val function = LoxFunction(stmt, environment)
+        environment.define(stmt.name.lexeme, function)
+    }
+
     override fun visitVarStmt(stmt: Stmt.Var) {
-        environment.define(stmt.name, stmt.initializer?.let { evaluate(it) })
+        environment.define(stmt.name.lexeme, stmt.initializer?.let { evaluate(it) })
     }
 
     override fun visitExpressionStmt(stmt: Stmt.Expression) {
@@ -71,8 +91,13 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         println(stringify(value))
     }
 
+    override fun visitReturnStmt(stmt: Stmt.Return) {
+        val value = stmt.value?.let { evaluate(it) }
+        throw Return(value)
+    }
+
     override fun visitBlockStmt(block: Stmt.Block) {
-        evaluateBlock(block.statements, Environment(environment))
+        executeBlock(block.statements, Environment(environment))
     }
 
     override fun visitIfStmt(stmt: Stmt.If) {
@@ -95,6 +120,16 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return value
     }
 
+    override fun visitCallExpr(expr: Expr.Call): Any? {
+        val function = evaluate(expr.callee) as? LoxCallable
+            ?: throw RuntimeError(expr.paren, "Can only call functions and classes.")
+        if (expr.arguments.size != function.arity()) {
+            throw RuntimeError(expr.paren, "Expected ${function.arity()} arguments but got ${expr.arguments.size}")
+        }
+        val arguments = expr.arguments.map { evaluate(it) }
+        return function.call(this, arguments)
+    }
+
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {
         val left = evaluate(expr.left)
         val right = evaluate(expr.right)
@@ -106,7 +141,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
                     left is String && right is String -> left + right
                     else -> throw RuntimeError(
                         operator,
-                        "Operands must be two numbers or two strings: left=$left, right=$right"
+                        "Operands must be two numbers or two strings: left=$left, right=$right",
                     )
                 }
             }

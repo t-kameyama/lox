@@ -31,6 +31,10 @@ sealed interface Expr {
         override fun <R> accept(visitor: Visitor<R>): R = visitor.visitAssignExpr(this)
     }
 
+    data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>) : Expr {
+        override fun <R> accept(visitor: Visitor<R>): R = visitor.visitCallExpr(this)
+    }
+
     interface Visitor<R> {
         fun visitBinaryExpr(expr: Binary): R
         fun visitGroupingExpr(expr: Grouping): R
@@ -39,5 +43,6 @@ sealed interface Expr {
         fun visitUnaryExpr(expr: Unary): R
         fun visitVariableExpr(expr: Variable): R
         fun visitAssignExpr(expr: Assign): R
+        fun visitCallExpr(expr: Call): R
     }
 }

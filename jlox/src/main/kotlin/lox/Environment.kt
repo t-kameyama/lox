@@ -3,8 +3,8 @@ package lox
 class Environment(private val enclosing: Environment? = null) {
     private val values: MutableMap<String, Any?> = mutableMapOf()
 
-    fun define(name: Token, value: Any?) {
-        values[name.lexeme] = value
+    fun define(name: String, value: Any?) {
+        values[name] = value
     }
 
     fun get(name: Token): Any? {
