@@ -7,6 +7,22 @@ class Environment(private val enclosing: Environment? = null) {
         values[name] = value
     }
 
+    private fun ancestor(distance: Int): Environment? {
+        var environment: Environment? = this
+        repeat(distance) {
+            environment = environment?.enclosing
+        }
+        return environment
+    }
+
+    fun getAt(distance: Int, name: String): Any? {
+        return ancestor(distance)?.values?.get(name)
+    }
+
+    fun assignAt(distance: Int, name: Token, value: Any?) {
+        ancestor(distance)?.values?.put(name.lexeme, value)
+    }
+
     fun get(name: Token): Any? {
         if (name.lexeme in values) {
             return values[name.lexeme]

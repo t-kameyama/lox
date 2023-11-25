@@ -127,4 +127,39 @@ class LoxTest {
         """.trimIndent()
         Lox.run(source)
     }
+
+    @Test
+    fun binding() {
+        val source = """
+            var a = "global";
+            {
+                fun showA() {
+                    print a;
+                }
+                showA();
+                var a = "block";
+                showA();
+            }
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun duplicateDefinition() {
+        val source = """
+            fun bad() {
+                var a = "first";
+                var a = "second";
+            }
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun topLevelReturn() {
+        val source = """
+            return "at top level";
+        """.trimIndent()
+        Lox.run(source)
+    }
 }
