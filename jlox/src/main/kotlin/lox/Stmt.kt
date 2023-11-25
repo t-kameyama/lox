@@ -35,6 +35,10 @@ sealed interface Stmt {
         override fun <R> accept(visitor: Visitor<R>): R = visitor.visitReturnStmt(this)
     }
 
+    data class Class(val name: Token, val methods: List<Stmt.Function>) : Stmt {
+        override fun <R> accept(visitor: Visitor<R>): R = visitor.visitClassStmt(this)
+    }
+
     interface Visitor<R> {
         fun visitExpressionStmt(stmt: Expression): R
         fun visitPrintStmt(stmt: Print): R
@@ -44,5 +48,6 @@ sealed interface Stmt {
         fun visitWhileStmt(stmt: While): R
         fun visitFunctionStmt(stmt: Function): R
         fun visitReturnStmt(stmt: Return): R
+        fun visitClassStmt(stmt: Class): R
     }
 }

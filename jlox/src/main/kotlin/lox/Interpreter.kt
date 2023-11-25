@@ -79,8 +79,18 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return text
     }
 
+    override fun visitClassStmt(stmt: Stmt.Class) {
+        environment.define(stmt.name.lexeme, null)
+        val methods = stmt.methods.associate { method ->
+            val isInitializer = method.name.lexeme == "init"
+            method.name.lexeme to LoxFunction(method, environment, isInitializer)
+        }
+        val klass = LoxClass(stmt.name.lexeme, methods)
+        environment.assign(stmt.name, klass)
+    }
+
     override fun visitFunctionStmt(stmt: Stmt.Function) {
-        val function = LoxFunction(stmt, environment)
+        val function = LoxFunction(stmt, environment, false)
         environment.define(stmt.name.lexeme, function)
     }
 
@@ -142,6 +152,28 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         }
         val arguments = expr.arguments.map { evaluate(it) }
         return function.call(this, arguments)
+    }
+
+    override fun visitGetExpr(expr: Expr.Get): Any? {
+        val obj = evaluate(expr.obj)
+        if (obj is LoxInstance) {
+            return obj.get(expr.name)
+        }
+        throw RuntimeError(expr.name, "Only instances have properties")
+    }
+
+    override fun visitSetExpr(expr: Expr.Set): Any? {
+        val obj = evaluate(expr.obj)
+        if (obj !is LoxInstance) {
+            throw RuntimeError(expr.name, "Only instances have fields.")
+        }
+        val value = evaluate(expr.value)
+        obj.set(expr.name, value)
+        return value
+    }
+
+    override fun visitThisExpr(expr: Expr.This): Any? {
+        return lookupVariable(expr.keyword, expr)
     }
 
     override fun visitBinaryExpr(expr: Expr.Binary): Any? {

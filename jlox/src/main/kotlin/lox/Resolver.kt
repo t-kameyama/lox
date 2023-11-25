@@ -5,9 +5,13 @@ import java.util.*
 class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.Visitor<Unit> {
     private val scopes = Stack<MutableMap<String, Boolean>>()
 
-    enum class FunctionType { NONE, FUNCTION }
+    enum class FunctionType { NONE, FUNCTION, METHOD, INITIALIZER }
 
     private var currentFunction = FunctionType.NONE
+
+    enum class ClassType { NONE, CLASS }
+
+    private var currentClass = ClassType.NONE;
 
     override fun visitBlockStmt(block: Stmt.Block) {
         beginScope()
@@ -17,6 +21,26 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
 
     override fun visitExpressionStmt(stmt: Stmt.Expression) {
         resolve(stmt.expr)
+    }
+
+    override fun visitClassStmt(stmt: Stmt.Class) {
+        val enclosingClass = currentClass
+        currentClass = ClassType.CLASS
+
+        declare(stmt.name)
+        define(stmt.name)
+
+        beginScope()
+        scopes.peek()["this"] = true
+
+        for (method in stmt.methods) {
+            val functionType = if (method.name.lexeme == "init") FunctionType.INITIALIZER else FunctionType.METHOD
+            resolveFunction(method, functionType)
+        }
+
+        currentClass = enclosingClass
+
+        endScope()
     }
 
     override fun visitFunctionStmt(stmt: Stmt.Function) {
@@ -39,7 +63,12 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         if (currentFunction == FunctionType.NONE) {
             Lox.error(stmt.keyword, "Can't return from top-level code.")
         }
-        stmt.value?.let { resolve(it) }
+        if (stmt.value != null) {
+            if (currentFunction == FunctionType.INITIALIZER) {
+                Lox.error(stmt.keyword, "Can't return a value from an initializer.")
+            }
+            resolve(stmt.value)
+        }
     }
 
     override fun visitWhileStmt(stmt: Stmt.While) {
@@ -70,6 +99,23 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         for (argument in expr.arguments) {
             resolve(argument)
         }
+    }
+
+    override fun visitGetExpr(expr: Expr.Get) {
+        resolve(expr.obj)
+    }
+
+    override fun visitSetExpr(expr: Expr.Set) {
+        resolve(expr.value)
+        resolve(expr.obj)
+    }
+
+    override fun visitThisExpr(expr: Expr.This) {
+        if (currentClass == ClassType.NONE) {
+            Lox.error(expr.keyword, "Can't use 'this' outside of a class.")
+            return
+        }
+        resolveLocal(expr, expr.keyword)
     }
 
     override fun visitGroupingExpr(expr: Expr.Grouping) {

@@ -162,4 +162,96 @@ class LoxTest {
         """.trimIndent()
         Lox.run(source)
     }
+
+    @Test
+    fun `class`() {
+        val source = """
+            class Foo {}
+            var foo = Foo();
+            print foo;
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun accessor() {
+        val source = """
+            class Foo {}
+            var foo = Foo();
+            foo.bar = 123;
+            print foo.bar;
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun method() {
+        val source = """
+            class Bacon {
+                eat() {
+                    print "Crunch crunch crunch!";
+                }
+            }
+            Bacon().eat();
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun `this`() {
+        val source = """
+            class Cake {
+                taste() {
+                    var adjective = "delicious";
+                    print "The " + this.flavor + " cake is " + adjective + "!";
+                }
+            }
+            var cake = Cake();
+            cake.flavor = "German chocolate";
+            cake.taste();
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun topLevelThis() {
+        val source = """
+            print this;
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun `init`() {
+        val source = """
+            class Foo {
+                init() {
+                    print "init";
+                }
+            }
+            var foo = Foo();
+            print foo.init();
+            
+            class Bar {
+                init() {
+                    return;
+                }
+            }
+            print Bar().init();
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun returnValueFromInit() {
+        val source = """
+            class Baz {
+                init() {
+                    return "baz";
+                }
+            }
+            print Baz().init();
+        """.trimIndent()
+        Lox.run(source)
+    }
 }

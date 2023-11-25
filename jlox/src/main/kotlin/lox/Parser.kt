@@ -5,6 +5,7 @@ import lox.TokenType.BANG
 import lox.TokenType.BANG_EQUAL
 import lox.TokenType.CLASS
 import lox.TokenType.COMMA
+import lox.TokenType.DOT
 import lox.TokenType.ELSE
 import lox.TokenType.EOF
 import lox.TokenType.EQUAL
@@ -33,6 +34,7 @@ import lox.TokenType.SEMICOLON
 import lox.TokenType.SLASH
 import lox.TokenType.STAR
 import lox.TokenType.STRING
+import lox.TokenType.THIS
 import lox.TokenType.TRUE
 import lox.TokenType.VAR
 import lox.TokenType.WHILE
@@ -51,9 +53,10 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun declaration(): Stmt? {
-        // function | varDecl | statement ;
+        // classDecl | funDecl | varDecl | statement ;
         try {
-            if (match(FUN)) return function("function")
+            if (match(CLASS)) return classDecl()
+            if (match(FUN)) return funDecl("function")
             if (match(VAR)) return varDecl()
             return statement()
         } catch (e: ParserError) {
@@ -62,7 +65,22 @@ class Parser(private val tokens: List<Token>) {
         }
     }
 
-    private fun function(kind: String): Stmt.Function {
+    private fun classDecl(): Stmt.Class {
+        // "class" IDENTIFIER "{" funDecl* "}" ;
+        val name = consume(IDENTIFIER, "Expect class name.")
+        consume(LEFT_BRACE, "Expect '{' before class body.")
+
+        val methods = mutableListOf<Stmt.Function>()
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            methods.add(funDecl("method"))
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after class body.")
+
+        return Stmt.Class(name, methods)
+    }
+
+    private fun funDecl(kind: String): Stmt.Function {
         // "fun" IDENTIFIER "(" parameters? ")" block;
         // parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
         val name = consume(IDENTIFIER, "Expect $kind name.")
@@ -203,13 +221,15 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun assignment(): Expr {
-        // IDENTIFIER "=" assignment | or ;
+        // (call "." )? IDENTIFIER "=" assignment | or ;
         val expr = or()
         if (match(EQUAL)) {
             val equals = previous()
             val value = assignment()
             if (expr is Expr.Variable) {
                 return Expr.Assign(expr.name, value)
+            } else if (expr is Expr.Get) {
+                return Expr.Set(expr.obj, expr.name, value)
             }
             error(equals, "Invalid assignment target.")
         }
@@ -284,12 +304,15 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun call(): Expr {
-        // primary ( "(" arguments ")" )* ;
+        // primary ( "(" arguments ")" | "." IDENTIFIER )* ;
         // arguments -> expression ( "," expression? )* ;
         var expr = primary()
         while (true) {
-            if (match(LEFT_PAREN)) {
-                expr = finishCall(expr)
+            expr = if (match(LEFT_PAREN)) {
+                finishCall(expr)
+            } else if (match(DOT)) {
+                val name = consume(IDENTIFIER, "Expect property name after '.'.")
+                Expr.Get(expr, name)
             } else {
                 break
             }
@@ -317,6 +340,7 @@ class Parser(private val tokens: List<Token>) {
         if (match(TRUE)) return Expr.Literal(true)
         if (match(NIL)) return Expr.Literal(null)
         if (match(NUMBER, STRING)) return Expr.Literal(previous().literal)
+        if (match(THIS)) return Expr.This(previous())
         if (match(IDENTIFIER)) return Expr.Variable(previous())
         if (match(LEFT_PAREN)) {
             val expr = expression()
