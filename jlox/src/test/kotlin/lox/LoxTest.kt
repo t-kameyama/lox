@@ -254,4 +254,46 @@ class LoxTest {
         """.trimIndent()
         Lox.run(source)
     }
+
+    @Test
+    fun inheritance() {
+        val source = """
+            class A {
+              method() {
+                print "A method";
+              }
+            }
+            
+            class B < A {
+              method() {
+                print "B method";
+              }
+            
+              test() {
+                super.method();
+              }
+            }
+            
+            class C < B {}
+            
+            var c = C();
+            c.method();
+            c.test();
+        """.trimIndent()
+        Lox.run(source)
+    }
+
+    @Test
+    fun invalidSuper() {
+        val source = """
+        class Eclair {
+          cook() {
+            super.cook();
+            print "Pipe full of crème pâtissière.";
+          }
+        }
+        Eclair().cook();
+        """.trimIndent()
+        Lox.run(source)
+    }
 }

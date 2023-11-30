@@ -47,6 +47,10 @@ sealed interface Expr {
         override fun <R> accept(visitor: Visitor<R>): R = visitor.visitThisExpr(this)
     }
 
+    data class Super(val keyword: Token, val method: Token) : Expr {
+        override fun <R> accept(visitor: Visitor<R>): R = visitor.visitSuperExpr(this)
+    }
+
     interface Visitor<R> {
         fun visitBinaryExpr(expr: Binary): R
         fun visitGroupingExpr(expr: Grouping): R
@@ -59,5 +63,6 @@ sealed interface Expr {
         fun visitGetExpr(expr: Get): R
         fun visitSetExpr(expr: Set): R
         fun visitThisExpr(expr: This): R
+        fun visitSuperExpr(expr: Super): R
     }
 }

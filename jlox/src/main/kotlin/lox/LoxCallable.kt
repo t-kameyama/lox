@@ -34,7 +34,11 @@ class LoxFunction(
     }
 }
 
-class LoxClass(val name: String, private val methods: Map<String, LoxFunction>) : LoxCallable {
+class LoxClass(
+    val name: String,
+    private val superclass: LoxClass?,
+    private val methods: Map<String, LoxFunction>,
+) : LoxCallable {
     override fun arity(): Int = findMethods("init")?.arity() ?: 0
 
     override fun call(interpreter: Interpreter, arguments: List<Any?>): Any {
@@ -45,7 +49,7 @@ class LoxClass(val name: String, private val methods: Map<String, LoxFunction>) 
 
     override fun toString(): String = name
 
-    fun findMethods(name: String): LoxFunction? = methods[name]
+    fun findMethods(name: String): LoxFunction? = methods[name] ?: superclass?.findMethods(name)
 }
 
 class LoxInstance(private val klass: LoxClass) {

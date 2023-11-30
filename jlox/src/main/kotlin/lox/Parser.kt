@@ -34,6 +34,7 @@ import lox.TokenType.SEMICOLON
 import lox.TokenType.SLASH
 import lox.TokenType.STAR
 import lox.TokenType.STRING
+import lox.TokenType.SUPER
 import lox.TokenType.THIS
 import lox.TokenType.TRUE
 import lox.TokenType.VAR
@@ -66,8 +67,14 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun classDecl(): Stmt.Class {
-        // "class" IDENTIFIER "{" funDecl* "}" ;
+        // "class" IDENTIFIER ( "<" IDENTIFIER )? "{" funDecl* "}" ;
         val name = consume(IDENTIFIER, "Expect class name.")
+
+        val superclass = if (match(LESS)) {
+            consume(IDENTIFIER, "Expect superclass name.")
+            Expr.Variable(previous())
+        } else null
+
         consume(LEFT_BRACE, "Expect '{' before class body.")
 
         val methods = mutableListOf<Stmt.Function>()
@@ -77,7 +84,7 @@ class Parser(private val tokens: List<Token>) {
 
         consume(RIGHT_BRACE, "Expect '}' after class body.")
 
-        return Stmt.Class(name, methods)
+        return Stmt.Class(name, superclass, methods)
     }
 
     private fun funDecl(kind: String): Stmt.Function {
@@ -335,17 +342,23 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun primary(): Expr {
-        //  NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
-        if (match(FALSE)) return Expr.Literal(false)
+        //  "true" | "false" | "nil" | "this" | NUMBER | STRING | IDENTIFIER | "(" expression ")" | "super" "." IDENTIFIER ;
         if (match(TRUE)) return Expr.Literal(true)
+        if (match(FALSE)) return Expr.Literal(false)
         if (match(NIL)) return Expr.Literal(null)
-        if (match(NUMBER, STRING)) return Expr.Literal(previous().literal)
         if (match(THIS)) return Expr.This(previous())
+        if (match(NUMBER, STRING)) return Expr.Literal(previous().literal)
         if (match(IDENTIFIER)) return Expr.Variable(previous())
         if (match(LEFT_PAREN)) {
             val expr = expression()
             consume(RIGHT_PAREN, "Expect ') after expression.")
             return Expr.Grouping(expr)
+        }
+        if (match(SUPER)) {
+            val keyword = previous()
+            consume(DOT, "Expect '.' after 'super'.")
+            val method = consume(IDENTIFIER, "Expect superclass method name.")
+            return Expr.Super(keyword, method)
         }
         throw error(peek(), "Expect expression.")
     }
